@@ -1,7 +1,7 @@
 use {
     axum::{
         body::Bytes,
-        extract::{Extension, Json},
+        extract::{Json, Path, State},
         http::{Request, StatusCode},
         middleware::{self},
         response::{IntoResponse, Response},
@@ -10,8 +10,7 @@ use {
     },
     lshort::metrics::{setup_metrics_recorder, track_metrics},
     rand::distributions::{Alphanumeric, DistString},
-    redis::{Client, Commands},
-    std::sync::Arc,
+    rocksdb::{Options, DB},
     std::{future::ready, net::SocketAddr, time::Duration},
     tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer},
     tracing::Span,
@@ -27,15 +26,27 @@ async fn handler() -> impl IntoResponse {
     (StatusCode::OK, "OK")
 }
 
-async fn new_link(
-    Extension(client): Extension<Arc<Client>>,
-    Json(link): Json<Link>,
-) -> impl IntoResponse {
-    let mut con = client.get_connection().expect("Failed to connect to redis");
+async fn new_link(State(db): State<DB>, Json(link): Json<Link>) -> impl IntoResponse {
     println!("{}", link.value);
     let s = Alphanumeric.sample_string(&mut rand::thread_rng(), 6);
-    let _save_to_redis: () = con.set(link.value, &s).expect("Failed to set key");
-    (StatusCode::OK, format!("localhost:3000/r/{}", s))
+    match db.put(s.as_bytes(), link.value.as_bytes()) {
+        Ok(_) => return (StatusCode::OK, format!("localhost:3000/r/{}", s)),
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "oops we messed up".to_owned(),
+            )
+        }
+    };
+}
+
+async fn redirect(State(db): State<DB>, Path(params): Path<String>) -> impl IntoResponse {
+    let url = match db.get(params.as_bytes()) {
+        Ok(Some(u)) => String::from_utf8(u).unwrap(),
+        Ok(None) => "Not Found".to_owned(),
+        Err(e) => format!("{}", e),
+    };
+    (StatusCode::OK, url)
 }
 
 pub async fn global_404() -> impl IntoResponse {
@@ -64,15 +75,12 @@ async fn main() {
 
     let recorder_handle = setup_metrics_recorder();
 
-    let redis_client =
-        redis::Client::open("redis://127.0.0.1:6379").expect("Failed to connect to redis");
+    let db = DB::open_default("./database").unwrap();
 
-    let redis_client = Arc::new(redis_client);
-
-    let app = Router::new()
+    let app = Router::with_state(db)
         .route("/", get(handler))
-        .route("/new", post(new_link))
-        .layer(Extension(redis_client))
+        .route("/n", post(new_link))
+        .route("/r/:id", get(redirect))
         .fallback(global_404)
         .layer(TraceLayer::new_for_http())
         .route("/metrics", get(move || ready(recorder_handle.render())))
