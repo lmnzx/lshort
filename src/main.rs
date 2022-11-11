@@ -4,17 +4,19 @@ use {
         extract::{Json, Path, State},
         http::{Request, StatusCode},
         middleware::{self},
-        response::{IntoResponse, Response},
+        response::{IntoResponse, Redirect, Response},
         routing::{get, post},
         Router,
     },
+    chrono::Utc,
     lshort::metrics::{setup_metrics_recorder, track_metrics},
     rand::distributions::{Alphanumeric, DistString},
-    rocksdb::{Options, DB},
+    sqlx::postgres::{PgPool, PgPoolOptions},
     std::{future::ready, net::SocketAddr, time::Duration},
     tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer},
     tracing::Span,
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt},
+    uuid::Uuid,
 };
 
 #[derive(serde::Deserialize)]
@@ -26,27 +28,45 @@ async fn handler() -> impl IntoResponse {
     (StatusCode::OK, "OK")
 }
 
-async fn new_link(State(db): State<DB>, Json(link): Json<Link>) -> impl IntoResponse {
-    println!("{}", link.value);
-    let s = Alphanumeric.sample_string(&mut rand::thread_rng(), 6);
-    match db.put(s.as_bytes(), link.value.as_bytes()) {
-        Ok(_) => return (StatusCode::OK, format!("localhost:3000/r/{}", s)),
-        Err(_) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "oops we messed up".to_owned(),
-            )
-        }
-    };
+async fn new_link(State(pool): State<PgPool>, Json(link): Json<Link>) -> impl IntoResponse {
+    let id = Uuid::new_v4();
+    let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 6);
+    match sqlx::query!(
+        r#"
+            INSERT INTO links (id, url, key, created_at)
+            VALUES ($1, $2, $3, $4)
+        "#,
+        id,
+        link.value,
+        key,
+        Utc::now()
+    )
+    .execute(&pool)
+    .await
+    {
+        Ok(_) => (StatusCode::OK, format!("localhost:3000/r/{}", key)),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "oops we messed up".to_owned(),
+        ),
+    }
 }
 
-async fn redirect(State(db): State<DB>, Path(params): Path<String>) -> impl IntoResponse {
-    let url = match db.get(params.as_bytes()) {
-        Ok(Some(u)) => String::from_utf8(u).unwrap(),
-        Ok(None) => "Not Found".to_owned(),
-        Err(e) => format!("{}", e),
-    };
-    (StatusCode::OK, url)
+async fn redirect(State(pool): State<PgPool>, Path(params): Path<String>) -> impl IntoResponse {
+    let url = sqlx::query!(
+        r#"
+            SELECT url FROM links WHERE key=$1
+        "#,
+        params
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap()
+    .url;
+
+    println!("{:#?}", url);
+
+    Redirect::to(&url).into_response()
 }
 
 pub async fn global_404() -> impl IntoResponse {
@@ -75,9 +95,13 @@ async fn main() {
 
     let recorder_handle = setup_metrics_recorder();
 
-    let db = DB::open_default("./database").unwrap();
+    let pool = PgPoolOptions::new()
+        .max_connections(10)
+        .connect("postgres://postgres:password@localhost:5432/lshort")
+        .await
+        .expect("Cannot connect to database");
 
-    let app = Router::with_state(db)
+    let app = Router::with_state(pool)
         .route("/", get(handler))
         .route("/n", post(new_link))
         .route("/r/:id", get(redirect))
