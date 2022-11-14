@@ -7,6 +7,7 @@ use {
         routing::{get, post},
         Router,
     },
+    axum_extra::routing::SpaRouter,
     lshort::metrics::{setup_metrics_recorder, track_metrics},
     lshort::routes::{global_404, health_check, new_link, redirect},
     sqlx::postgres::PgPoolOptions,
@@ -33,10 +34,13 @@ async fn main() {
         .await
         .expect("Cannot connect to database");
 
+    let web = SpaRouter::new("/", "web/dist"); // serving the frontend react app
+
     let app = Router::with_state(pool)
         .route("/health_check", get(health_check))
         .route("/n", post(new_link))
         .route("/r/:id", get(redirect))
+        .merge(web)
         .fallback(global_404)
         .layer(TraceLayer::new_for_http())
         .route("/metrics", get(move || ready(recorder_handle.render())))
