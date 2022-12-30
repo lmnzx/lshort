@@ -2,10 +2,11 @@ use {
     axum::{
         extract::{Json, State},
         http::StatusCode,
-        response::IntoResponse,
+        response::Json as ResponseJson,
     },
     chrono::Utc,
     rand::distributions::{Alphanumeric, DistString},
+    serde_json::{json, Value},
     sqlx::postgres::PgPool,
     uuid::Uuid,
 };
@@ -15,7 +16,10 @@ pub struct Link {
     value: String,
 }
 
-pub async fn new_link(State(pool): State<PgPool>, Json(link): Json<Link>) -> impl IntoResponse {
+pub async fn new_link(
+    State(pool): State<PgPool>,
+    Json(link): Json<Link>,
+) -> (StatusCode, ResponseJson<Value>) {
     let id = Uuid::new_v4();
     let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 6);
     match sqlx::query!(
@@ -31,10 +35,13 @@ pub async fn new_link(State(pool): State<PgPool>, Json(link): Json<Link>) -> imp
     .execute(&pool)
     .await
     {
-        Ok(_) => (StatusCode::OK, format!("localhost:3000/r/{}", key)),
+        Ok(_) => (
+            StatusCode::OK,
+            ResponseJson(json!({ "data": format!("localhost:3000/r/{}", key) })),
+        ),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "oops we messed up".to_owned(),
+            ResponseJson(json!({"error": "oops we messed up..."})),
         ),
     }
 }

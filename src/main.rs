@@ -8,14 +8,17 @@ use {
         Router,
     },
     axum_extra::routing::SpaRouter,
+    hyper::http::{header, HeaderValue, Method},
     lshort::metrics::{setup_metrics_recorder, track_metrics},
     lshort::routes::{global_404, health_check, new_link, redirect},
     sqlx::postgres::PgPoolOptions,
     std::{future::ready, net::SocketAddr, time::Duration},
-    tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer},
+    tower_http::{classify::ServerErrorsFailureClass, cors::CorsLayer, trace::TraceLayer},
     tracing::Span,
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt},
 };
+
+// TODO Adding configuration setting for prod and dev
 
 #[tokio::main]
 async fn main() {
@@ -36,7 +39,13 @@ async fn main() {
 
     let web = SpaRouter::new("/", "web/dist"); // serving the frontend react app
 
-    let app = Router::with_state(pool)
+    let cors = CorsLayer::new()
+        .allow_credentials(true)
+        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE]);
+
+    let app = Router::new()
         .route("/health_check", get(health_check))
         .route("/n", post(new_link))
         .route("/r/:id", get(redirect))
@@ -61,13 +70,15 @@ async fn main() {
                         tracing::error!("something went wrong {:#?}", error)
                     },
                 ),
-        );
+        )
+        .with_state(pool)
+        .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
     tracing::debug!("listening on {}", addr);
 
-    axum::Server::bind(&addr)
+    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
