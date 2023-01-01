@@ -9,10 +9,11 @@ use {
     },
     axum_extra::routing::SpaRouter,
     hyper::http::{header, HeaderValue, Method},
+    lshort::config::get_config,
     lshort::metrics::{setup_metrics_recorder, track_metrics},
     lshort::routes::{global_404, health_check, new_link, redirect},
     sqlx::postgres::PgPoolOptions,
-    std::{future::ready, net::SocketAddr, time::Duration},
+    std::{future::ready, time::Duration},
     tower_http::{classify::ServerErrorsFailureClass, cors::CorsLayer, trace::TraceLayer},
     tracing::Span,
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt},
@@ -32,11 +33,11 @@ async fn main() {
 
     let recorder_handle = setup_metrics_recorder();
 
+    let config = get_config().expect("Failed to read configuration");
+
     let pool = PgPoolOptions::new()
-        .max_connections(10)
-        .connect("postgres://postgres:password@localhost:5432/lshort")
-        .await
-        .expect("Cannot connect to database");
+        .acquire_timeout(Duration::from_secs(10))
+        .connect_lazy_with(config.database.get_db());
 
     let web = SpaRouter::new("/", "web/dist"); // serving the frontend react app
 
@@ -76,7 +77,7 @@ async fn main() {
         .with_state(pool)
         .layer(cors);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = config.application.get_address();
 
     tracing::debug!("listening on {}", addr);
 

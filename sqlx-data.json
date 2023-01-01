@@ -1,0 +1,38 @@
+{
+  "db": "PostgreSQL",
+  "0ce44e3b63c7287ce8d16158d9066db69b2de8261acc8246a3e1df18207cb189": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO links (id, url, key, created_at)\n            VALUES ($1, $2, $3, $4)\n        "
+  },
+  "171932712a16c095e38d19d567d1665aebc0a0dacd6c31eb167dc3e89479fb10": {
+    "describe": {
+      "columns": [
+        {
+          "name": "url",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            SELECT url FROM links WHERE key=$1\n        "
+  }
+}
