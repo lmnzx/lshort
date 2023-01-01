@@ -18,7 +18,8 @@ use {
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt},
 };
 
-// TODO Adding configuration setting for prod and dev
+// TODO Add configuration setting for prod and dev
+// TODO Add link validation
 
 #[tokio::main]
 async fn main() {
@@ -39,6 +40,7 @@ async fn main() {
 
     let web = SpaRouter::new("/", "web/dist"); // serving the frontend react app
 
+    // Only needed for dev env as axum will server the build app from same origin
     let cors = CorsLayer::new()
         .allow_credentials(true)
         .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
@@ -74,11 +76,11 @@ async fn main() {
         .with_state(pool)
         .layer(cors);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
     tracing::debug!("listening on {}", addr);
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
