@@ -4,10 +4,13 @@ WORKDIR /app
 RUN apt-get update
 RUN apt-get install -y build-essential clang lld libssl-dev pkg-config
 COPY . .
+ENV SQLX_OFFLINE true
 RUN cargo build --release
 
 FROM gcr.io/distroless/cc
 WORKDIR /app
 COPY --from=build /app/target/release/lshort lshort
+COPY config config 
 ENV RUST_LOG trace
+ENV APP_ENVIRONMENT production
 ENTRYPOINT ["./lshort"]
