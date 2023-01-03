@@ -7,3 +7,4 @@ tests/
 Dockerfile
 scripts/
 migrations/
+**/node_modules
