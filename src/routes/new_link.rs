@@ -21,7 +21,11 @@ pub async fn new_link(
     Json(link): Json<Link>,
 ) -> (StatusCode, ResponseJson<Value>) {
     let id = Uuid::new_v4();
+
     let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 6);
+
+    let endpoint = std::env::var("APP_ENDPOINT").unwrap_or_else(|_| "localhost:3000/".into());
+
     match sqlx::query!(
         r#"
             INSERT INTO links (id, url, key, created_at)
@@ -37,7 +41,7 @@ pub async fn new_link(
     {
         Ok(_) => (
             StatusCode::OK,
-            ResponseJson(json!({ "data": format!("localhost:3000/r/{}", key) })),
+            ResponseJson(json!({ "data": format!("{}r/{}", endpoint, key) })),
         ),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,

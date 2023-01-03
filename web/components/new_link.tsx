@@ -11,7 +11,7 @@ export default function CreateLink() {
             body: JSON.stringify({ "value": url })
         };
 
-        const response = await fetch('http://localhost:3000/n', requestOptions);
+        const response = await fetch(`${import.meta.env.VITE_ENDPOINT}n`, requestOptions);
         const data = await response.json();
         console.log(data);
     }
