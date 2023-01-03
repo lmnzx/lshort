@@ -9,7 +9,7 @@ use {
     },
     axum_extra::routing::SpaRouter,
     hyper::http::{header, HeaderValue, Method},
-    lshort::config::get_config,
+    lshort::config::{get_config, Environment},
     lshort::metrics::{setup_metrics_recorder, track_metrics},
     lshort::routes::{global_404, health_check, new_link, redirect},
     sqlx::postgres::PgPoolOptions,
@@ -19,8 +19,8 @@ use {
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt},
 };
 
-// TODO Add configuration setting for prod and dev
 // TODO Add link validation
+// TODO Change Dockerbuild file to build the react app
 
 #[tokio::main]
 async fn main() {
@@ -42,11 +42,26 @@ async fn main() {
     let web = SpaRouter::new("/", "web/dist"); // serving the frontend react app
 
     // Only needed for dev env as axum will server the build app from same origin
-    let cors = CorsLayer::new()
-        .allow_credentials(true)
-        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
-        .allow_methods([Method::GET, Method::POST])
-        .allow_headers([header::CONTENT_TYPE]);
+    let env: Environment = std::env::var("APP_ENVIRONMENT")
+        .unwrap_or_else(|_| "local".into())
+        .try_into()
+        .expect("Failed to parse APP_ENVIRONMENT");
+
+    let cors;
+
+    match env {
+        Environment::Local => {
+            cors = CorsLayer::new()
+                .allow_credentials(true)
+                .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+                .allow_methods([Method::GET, Method::POST])
+                .allow_headers([header::CONTENT_TYPE]);
+        }
+
+        Environment::Production => cors = CorsLayer::new(),
+    }
+
+    println!("{:#?}", cors);
 
     let app = Router::new()
         .route("/health_check", get(health_check))
