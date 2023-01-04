@@ -8,9 +8,12 @@ RUN cargo build --release
 
 FROM node:19-alpine AS node-builder
 WORKDIR /app
+COPY web/package.json .
+RUN npm i
 COPY web .
 ENV NODE_ENV production
-RUN npm install --production
+RUN npm run build
+
 
 FROM debian:bullseye-slim
 WORKDIR /app

@@ -11,7 +11,7 @@ export default function CreateLink() {
             body: JSON.stringify({ "value": url })
         };
 
-        const response = await fetch(`${import.meta.env.VITE_ENDPOINT}n`, requestOptions);
+        const response = await fetch(`https://falling-sun-8079.fly.dev/n`, requestOptions);
         const data = await response.json();
         console.log(data);
     }
