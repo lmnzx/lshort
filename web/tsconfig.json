@@ -22,7 +22,7 @@
   },
   "include": [
     "src",
-    "components"
+    "src/components"
   ],
   "references": [
     {

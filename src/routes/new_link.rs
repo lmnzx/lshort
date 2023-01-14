@@ -41,7 +41,7 @@ pub async fn new_link(
     {
         Ok(_) => (
             StatusCode::OK,
-            ResponseJson(json!({ "data": format!("{}r/{}", endpoint, key) })),
+            ResponseJson(json!({ "url": format!("{}r/{}", endpoint, key) })),
         ),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,

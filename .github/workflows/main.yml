@@ -8,6 +8,15 @@ on:
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 jobs:
+  format_lint:
+      name: Format and Lint
+      runs-on: ubuntu-latest
+      steps:
+        - uses: rome/setup-rome@v0.4
+          with:
+            version: latest 
+        - run: rome check src/ --apply-suggested
+        - run: rome format src/ --write
   deploy:
       name: Deploy app
       runs-on: ubuntu-latest

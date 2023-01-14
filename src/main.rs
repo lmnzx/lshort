@@ -19,8 +19,6 @@ use {
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt},
 };
 
-// TODO Add link validation
-
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
