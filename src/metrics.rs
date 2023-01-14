@@ -36,7 +36,7 @@ pub async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> impl IntoRespon
     let labels = [
         ("method", method.to_string()),
         ("path", path),
-        ("status", status),
+        ("http_status_codes", status),
     ];
 
     metrics::increment_counter!("http_requests_total", &labels);
