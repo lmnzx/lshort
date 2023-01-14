@@ -13,7 +13,7 @@ function App() {
 
   return (
     <>
-      <Container maxW={'3xl'} paddingTop='100'>
+      <Container maxW={'3xl'} >
         <Stack
           as={Box}
           textAlign={'center'}
@@ -34,9 +34,9 @@ function App() {
           <CreateLink />
         </Stack>
       </Container>
-      <Container centerContent paddingTop='200' >
+      <Container centerContent paddingTop='100' >
         <Text lineHeight='tall'>
-          Made with ❤️ by <Link href='https://github.com/snxk' isExternal rounded='full' bg='teal.100' color='black' px='2' py='1'> Sayan Mallick </Link>
+          Made with ❤️ by <Link href='https://github.com/lmnzx' isExternal rounded='full' bg='teal.100' color='black' px='2' py='1'> Sayan Mallick </Link>
         </Text>
       </Container>
     </>
