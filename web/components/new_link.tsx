@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { InputGroup, Input, InputRightElement, Button, InputLeftAddon } from '@chakra-ui/react'
 
 export default function CreateLink() {
+    const api: string = import.meta.env.VITE_API ?? `http://localhost:3000`;
+
     const [url, setUrl] = useState('')
 
     const sendIt = async (url: String) => {
@@ -11,7 +13,7 @@ export default function CreateLink() {
             body: JSON.stringify({ "value": url })
         };
 
-        const response = await fetch(`https://falling-sun-8079.fly.dev/n`, requestOptions);
+        const response = await fetch(`${api}/n`, requestOptions);
         const data = await response.json();
         console.log(data);
     }

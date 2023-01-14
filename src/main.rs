@@ -20,7 +20,6 @@ use {
 };
 
 // TODO Add link validation
-// TODO Change Dockerbuild file to build the react app
 
 #[tokio::main]
 async fn main() {
@@ -60,8 +59,6 @@ async fn main() {
 
         Environment::Production => cors = CorsLayer::new(),
     }
-
-    println!("{:#?}", cors);
 
     let app = Router::new()
         .route("/health_check", get(health_check))

@@ -12,7 +12,7 @@ COPY web/package.json .
 RUN npm i
 COPY web .
 ENV NODE_ENV production
-RUN npm run build
+RUN VITE_API="https://falling-sun-8079.fly.dev" npm run build
 
 
 FROM debian:bullseye-slim
